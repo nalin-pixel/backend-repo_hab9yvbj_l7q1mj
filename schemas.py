@@ -12,9 +12,9 @@ Model name is converted to lowercase for the collection name:
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List, Literal
 
-# Example schemas (replace with your own):
+# Example schemas (you can keep using these elsewhere if needed):
 
 class User(BaseModel):
     """
@@ -38,11 +38,39 @@ class Product(BaseModel):
     category: str = Field(..., description="Product category")
     in_stock: bool = Field(True, description="Whether product is in stock")
 
-# Add your own schemas here:
-# --------------------------------------------------
+# Agent-specific schemas for this project
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+ActionType = Literal[
+    "tap",
+    "long_press",
+    "type_text",
+    "swipe",
+    "open_app",
+    "back",
+    "home",
+    "recent_apps",
+    "search",
+    "call_contact",
+    "send_message",
+    "toggle_wifi",
+    "toggle_bluetooth",
+    "open_url",
+    "unknown"
+]
+
+class DeviceAction(BaseModel):
+    """A single low-level action the device companion app can execute"""
+    type: ActionType
+    target: Optional[str] = Field(None, description="Target element/app/package/text")
+    args: Optional[dict] = Field(default_factory=dict, description="Additional arguments like coordinates, duration, etc.")
+    status: Literal["pending", "sent", "executed", "failed"] = "pending"
+    error: Optional[str] = None
+
+class Command(BaseModel):
+    """High-level user command which is planned into actions"""
+    text: str = Field(..., description="User provided instruction in natural language")
+    language: Optional[str] = Field(None, description="Detected language code, e.g., bn, en")
+    intent: Optional[str] = Field(None, description="Best-effort intent label")
+    actions: List[DeviceAction] = Field(default_factory=list, description="Planned low-level actions")
+    status: Literal["planned", "in_progress", "completed", "failed"] = "planned"
+    device_id: Optional[str] = Field(None, description="Remote device identifier if paired")
